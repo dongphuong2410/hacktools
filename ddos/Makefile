@@ -8,5 +8,5 @@ synflood: synflood.c
 	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
 
 reset_hijack: reset_hijack.c
-	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS)
+	$(CC) $^ $(CFLAGS) -o $@ $(LDFLAGS) -lpcap
 

